@@ -59,9 +59,9 @@ def main():
                 _, l, predictions = sess.run([optimizer, loss, train_prediction],
                                                 feed_dict=feed_dict)
                 avg_acc += accuracy(predictions, epochY) /rang
-
-            print("Epoch: %01d/%01d Accuracy: %.2f" % 
-                  (epoch+1, NEpochs, avg_acc) + str(' %'))
+                avg_loss += (l / (rang))
+            print("Epoch: %01d/%01d loss: %.4f Accuracy: %.2f" % 
+                  (epoch+1, NEpochs, avg_loss, avg_acc) + str(' %'))
 
         saver.save(sess, model_dir+'model')
 
