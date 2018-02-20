@@ -2,7 +2,6 @@
 
 # Created by Mohamed Elsayed
 import numpy as np, os
-
 from scipy import misc
 from sklearn.utils import shuffle
 
@@ -18,9 +17,7 @@ def LoadTrainingData(Dir, Img_Shape):
             for FileName in os.listdir(SubjectPath):
                 path = SubjectPath + "/" + FileName
                 Img = misc.imread(path, mode='L')
-
                 (height, width) = Img.shape
-
                 if(width != Img_Shape[0] or height != Img_Shape[1]):
                     Img = Img.resize((Img_Shape[0], Img_Shape[1]))
 
@@ -30,6 +27,7 @@ def LoadTrainingData(Dir, Img_Shape):
             ID += 1
 
     Images, Lbls = shuffle(Images, Lbls)
+
     Images = np.asarray(Images, dtype='float32').reshape([-1, Img_Shape[0], Img_Shape[1], 1]) /255
     for label in Lbls:
         Labels.append(Categorical([label], NClasses)[0])
