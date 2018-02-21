@@ -32,8 +32,12 @@ def LoadTrainingData(Dir, Img_Shape):
     # This is to add random noisy training data
     num_sample = int(noise_ratio*len(Images))
     for i in range(num_sample):
-        Images.append(np.random.randint(256, size=(height, width)))
-        Lbls.append(randint(0, NClasses-1))
+        # method 1: random data
+#        Images.append(np.random.randint(0, 256, size=(height, width)))
+#        Lbls.append(randint(0, NClasses-1))
+        # method 2: invert the original datasets
+        Images.append(np.clip(255-Images[i]-np.random.normal(scale=30,size=(height,width)),0,255))
+        Lbls.append(Lbls[i])
     
     Images, Lbls = shuffle(Images, Lbls)
     

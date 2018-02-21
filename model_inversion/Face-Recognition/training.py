@@ -18,7 +18,7 @@ NChannels = 1
 NClasses = 40
 
 BatchSize = 5
-NEpochs = 50
+NEpochs = 200
 learningRate = 0.001
 
 x = tf.placeholder(tf.float32, shape=(BatchSize, imageSize))
@@ -27,9 +27,6 @@ y = tf.placeholder(tf.float32, shape=(BatchSize, NClasses))
 X, Y= data.LoadTrainingData(training_dir, (imageWidth, imageHeight))
 data.TrainingData = X
 data.TrainingLables = Y
-
-print X.shape
-print Y.shape
 
 weights = tf.get_variable(shape=[imageSize, NClasses], initializer=tf.contrib.layers.xavier_initializer(),name='weights')
 biases = tf.Variable(tf.zeros([NClasses]), name='biases')
