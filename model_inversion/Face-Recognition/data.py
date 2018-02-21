@@ -3,10 +3,13 @@
 # Created by Mohamed Elsayed
 import numpy as np, os
 from scipy import misc
+from random import randint
 from sklearn.utils import shuffle
 
 (TrainingData, TrainingLables, start) = ([], [], 0)
 (TestingData, TestingLables, startT) = ([], [], 0)
+
+noise_ratio = 1
 
 def LoadTrainingData(Dir, Img_Shape):
     (Images, Lbls, Labels, ID, NClasses) = ([], [], [], 0, 0)
@@ -26,8 +29,14 @@ def LoadTrainingData(Dir, Img_Shape):
             NClasses += 1
             ID += 1
 
+    # This is to add random noisy training data
+    num_sample = int(noise_ratio*len(Images))
+    for i in range(num_sample):
+        Images.append(np.random.randint(256, size=(height, width)))
+        Lbls.append(randint(0, NClasses-1))
+    
     Images, Lbls = shuffle(Images, Lbls)
-
+    
     Images = np.asarray(Images, dtype='float32').reshape([-1, Img_Shape[0], Img_Shape[1], 1]) /255
     for label in Lbls:
         Labels.append(Categorical([label], NClasses)[0])

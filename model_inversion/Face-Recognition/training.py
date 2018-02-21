@@ -18,7 +18,7 @@ NChannels = 1
 NClasses = 40
 
 BatchSize = 5
-NEpochs = 500
+NEpochs = 50
 learningRate = 0.001
 
 x = tf.placeholder(tf.float32, shape=(BatchSize, imageSize))
@@ -28,7 +28,10 @@ X, Y= data.LoadTrainingData(training_dir, (imageWidth, imageHeight))
 data.TrainingData = X
 data.TrainingLables = Y
 
-weights = tf.Variable(tf.truncated_normal([imageSize, NClasses]), name='weights')
+print X.shape
+print Y.shape
+
+weights = tf.get_variable(shape=[imageSize, NClasses], initializer=tf.contrib.layers.xavier_initializer(),name='weights')
 biases = tf.Variable(tf.zeros([NClasses]), name='biases')
 
 def accuracy(predictions, labels):
@@ -40,7 +43,7 @@ def main():
     logits = tf.matmul(x, weights) + biases
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
                           labels=y, logits=logits))
-    optimizer = tf.train.GradientDescentOptimizer(learningRate).minimize(loss)
+    optimizer = tf.train.AdamOptimizer(learningRate).minimize(loss)
     train_prediction = tf.nn.softmax(logits)
     saver = tf.train.Saver()
 
