@@ -9,25 +9,31 @@ from PIL import Image, ImageDraw, ImageFont
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 training_dir = 'Datasets/Training'
+testing_dir = 'Datasets/Testing'
 model_dir = 'checkpoints/'
 
 imageWidth = 92
 imageHeight = 112
-imageSize =imageWidth*imageHeight
+imageSize = imageWidth*imageHeight
 NChannels = 1
 NClasses = 40
 
-BatchSize = 5
-NEpochs = 200
-learningRate = 0.001
+BatchSize = 1
+NEpochs = 400
+learningRate = 1e-3
 
-x = tf.placeholder(tf.float32, shape=(BatchSize, imageSize))
-y = tf.placeholder(tf.float32, shape=(BatchSize, NClasses))
+x = tf.placeholder(tf.float32, shape=(None, imageSize))
+y = tf.placeholder(tf.float32, shape=(None, NClasses))
 
-X, Y= data.LoadTrainingData(training_dir, (imageWidth, imageHeight))
+X, Y = data.LoadTrainingData(training_dir, (imageWidth, imageHeight))
 data.TrainingData = X
 data.TrainingLables = Y
 
+XT, YT, NamesT, _, Paths = data.LoadTestingData(testing_dir, (imageWidth, imageHeight))
+data.TestingData = XT
+data.TestingLables = YT
+
+#weights = tf.Variable(tf.truncated_normal([imageSize, NClasses]), name='weights')
 weights = tf.get_variable(shape=[imageSize, NClasses], initializer=tf.contrib.layers.xavier_initializer(),name='weights')
 biases = tf.Variable(tf.zeros([NClasses]), name='biases')
 
@@ -62,6 +68,14 @@ def main():
                 avg_loss += (l / (rang))
             print("Epoch: %01d/%01d loss: %.4f Accuracy: %.2f" % 
                   (epoch+1, NEpochs, avg_loss, avg_acc) + str(' %'))
+
+
+            XT_input = XT.reshape(len(XT), imageSize)
+            feed_dict = {x: XT_input, y:YT}
+            test_predictions = sess.run(train_prediction,
+                                                feed_dict=feed_dict)
+            acc = accuracy(test_predictions, np.asarray(YT))
+            print("Testing Accuracy: " + str(acc) + str(' %'))
 
         saver.save(sess, model_dir+'model')
 
