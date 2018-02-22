@@ -2,6 +2,7 @@ import time
 import math
 import os
 import data
+import argparse
 import numpy as np
 import tensorflow as tf
 from PIL import Image, ImageDraw, ImageFont
@@ -18,31 +19,42 @@ imageSize = imageWidth*imageHeight
 NChannels = 1
 NClasses = 40
 
-BatchSize = 1
-NEpochs = 400
-learningRate = 1e-3
-
-x = tf.placeholder(tf.float32, shape=(None, imageSize))
-y = tf.placeholder(tf.float32, shape=(None, NClasses))
-
-X, Y = data.LoadTrainingData(training_dir, (imageWidth, imageHeight))
-data.TrainingData = X
-data.TrainingLables = Y
-
-XT, YT, NamesT, _, Paths = data.LoadTestingData(testing_dir, (imageWidth, imageHeight))
-data.TestingData = XT
-data.TestingLables = YT
-
-#weights = tf.Variable(tf.truncated_normal([imageSize, NClasses]), name='weights')
-weights = tf.get_variable(shape=[imageSize, NClasses], initializer=tf.contrib.layers.xavier_initializer(),name='weights')
-biases = tf.Variable(tf.zeros([NClasses]), name='biases')
-
 def accuracy(predictions, labels):
     correctly_predicted = np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
     accu = (100.0 * correctly_predicted) / predictions.shape[0]
     return accu
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch', type=int, default=1, help='Batch Size')
+    parser.add_argument('--epoch', type=int, default=100, help='# of Epochs')
+    parser.add_argument('--learn', type=float, default=1e-3, help='learning rate')
+    parser.add_argument('--noise', type=float, default=0, help='Adding noise')
+
+    FLAGS = parser.parse_args()
+    BatchSize = FLAGS.batch
+    NEpochs = FLAGS.epoch
+    learningRate = FLAGS.learn
+    AddNoise = FLAGS.noise
+
+
+    x = tf.placeholder(tf.float32, shape=(None, imageSize))
+    y = tf.placeholder(tf.float32, shape=(None, NClasses))
+
+    X, Y = data.LoadTrainingData(training_dir, (imageWidth, imageHeight), AddNoise)
+    data.TrainingData = X
+    data.TrainingLables = Y
+
+    XT, YT, NamesT, _, Paths = data.LoadTestingData(testing_dir, (imageWidth, imageHeight))
+    data.TestingData = XT
+    data.TestingLables = YT
+
+    weights = tf.get_variable(shape=[imageSize, NClasses], 
+                              initializer=tf.contrib.layers.xavier_initializer(),
+                              name='weights')
+    biases = tf.Variable(tf.zeros([NClasses]), name='biases')
+
+
     logits = tf.matmul(x, weights) + biases
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
                           labels=y, logits=logits))
@@ -66,16 +78,14 @@ def main():
                                                 feed_dict=feed_dict)
                 avg_acc += accuracy(predictions, epochY) /rang
                 avg_loss += (l / (rang))
-            print("Epoch: %01d/%01d loss: %.4f Accuracy: %.2f" % 
-                  (epoch+1, NEpochs, avg_loss, avg_acc) + str(' %'))
-
 
             XT_input = XT.reshape(len(XT), imageSize)
             feed_dict = {x: XT_input, y:YT}
             test_predictions = sess.run(train_prediction,
                                                 feed_dict=feed_dict)
             acc = accuracy(test_predictions, np.asarray(YT))
-            print("Testing Accuracy: " + str(acc) + str(' %'))
+            print("Epoch: %01d loss: %.4f Training Acc: %.2f%% Testing Acc: %.2f%%" % 
+                  (epoch+1, avg_loss, avg_acc, acc))
 
         saver.save(sess, model_dir+'model')
 

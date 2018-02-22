@@ -9,9 +9,7 @@ from sklearn.utils import shuffle
 (TrainingData, TrainingLables, start) = ([], [], 0)
 (TestingData, TestingLables, startT) = ([], [], 0)
 
-noise_ratio = 1
-
-def LoadTrainingData(Dir, Img_Shape):
+def LoadTrainingData(Dir, Img_Shape, noise):
     (Images, Lbls, Labels, ID, NClasses) = ([], [], [], 0, 0)
     for(_, Dirs, _) in os.walk(Dir):
         Dirs = sorted(Dirs)
@@ -29,15 +27,18 @@ def LoadTrainingData(Dir, Img_Shape):
             NClasses += 1
             ID += 1
 
-    # This is to add random noisy training data
-    num_sample = int(noise_ratio*len(Images))
-    for i in range(num_sample):
-        # method 1: random data
-#        Images.append(np.random.randint(0, 256, size=(height, width)))
-#        Lbls.append(randint(0, NClasses-1))
-        # method 2: invert the original datasets
-        Images.append(np.clip(255-Images[i]-np.random.normal(scale=30,size=(height,width)),0,255))
-        Lbls.append(Lbls[i])
+    per_sample = len(Images)/NClasses
+    per_noise = int(noise*per_sample)
+    for i in range(NClasses):
+        for j in range(per_noise):
+            # method 1: random data
+#            Images.append(np.random.randint(0, 256, size=(height, width)))
+#            Lbls.append(randint(0, NClasses-1))
+            # method 2: invert the original datasets
+            image = Images[randint(i*per_sample, (i+1)*per_sample-1)]
+            Images.append(np.clip(255 - image - np.random.normal(scale=30, 
+                          size=(height, width)), 0, 255))
+            Lbls.append(i)
     
     Images, Lbls = shuffle(Images, Lbls)
     
