@@ -16,8 +16,8 @@ tf.logging.set_verbosity(tf.logging.INFO)
 MODEL_DIR = "./checkpoints/"
 DATA1_DIR = "./data/mnist/"
 DATA2_DIR = "./data/emnist/"
-NUM_EPOCHS = 40
-LOG_EPOCHS = 20
+NUM_EPOCHS = 500
+LOG_EPOCHS = 100
 BATCH_SIZE = 256
 LEARNING_RATE = 1e-3
 NUM_CLASS = 10
