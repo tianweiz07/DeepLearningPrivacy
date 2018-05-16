@@ -1,0 +1,13 @@
+DataSet:
+
+MNIST:
+  training:55,000, 10 classes
+      [5444, 6179, 5470, 5638, 5307, 4987, 5417, 5715, 5389, 5454] in random order
+  testing: 10,000, 10 classes
+      [980, 1135, 1032, 1010, 982, 892, 958, 1028, 974, 1009] in random order
+
+EMNIST:
+  training: 235,000, 10 classes
+      [23496, 23461, 23503, 23536, 23513, 23481, 23489, 23484, 23502, 23535] in random order
+  testing: 40,000, 10 classes
+      [4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000] in random order
