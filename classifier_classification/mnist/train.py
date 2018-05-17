@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-from __future__ import division
+
 from __future__ import print_function
 
 import tensorflow as tf
@@ -61,7 +60,3 @@ def Train(MODEL_DIR, data):
         if not os.path.exists(MODEL_DIR):
             os.makedirs(MODEL_DIR)
         saver.save(sess, MODEL_DIR+"/model.ckpt")
-#        var = [v for v in tf.trainable_variables() if v.name == "logits/kernel:0"][0]
-#        result = sess.run(var)
-
-#        return result
