@@ -6,10 +6,16 @@ import tensorflow as tf
 import numpy as np
 import argparse
 
-import utils
 import dataset
 
-mnist = dataset.read_data_sets("./data/mnist", "./data/emnist", reshape=False, one_hot=True, num_train=100, num_test=40, data_index=[1, 1, 2, 2, 1, 1, 2, 2, 1, 2])
+data1 = dataset.read_data_sets("./data/mnist/", "./data/emnist", reshape=False, one_hot=True,
+                               num_train=10, num_test=10, data_index = [1]*10, noise=1)
+print(data1.train.images.shape)
+print(data1.train.labels.shape)
+print(data1.test.images.shape)
+print(data1.test.labels.shape)
+
+#mnist = dataset.read_data_sets("./data/mnist", "./data/emnist", reshape=False, one_hot=True, num_train=100, num_test=40, data_index=[1, 1, 2, 2, 1, 1, 2, 2, 1, 2])
 
 #train_data = mnist.train.images
 #train_labels = mnist.train.labels

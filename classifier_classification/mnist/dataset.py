@@ -6,6 +6,7 @@ import gzip
 import os
 import numpy
 from six.moves import xrange 
+from random import randint
 
 from tensorflow.contrib.learn.python.learn.datasets import base
 from tensorflow.python.framework import dtypes
@@ -164,7 +165,8 @@ def read_data_sets(data1_dir,
                    seed=None,
                    num_train=0,
                    num_test=0,
-                   data_index=None):
+                   data_index=None,
+                   noise=0):
   if fake_data:
 
     def fake():
@@ -260,6 +262,19 @@ def read_data_sets(data1_dir,
                                    test2_images[test2_index]), axis=0)
   test_labels = numpy.concatenate((test1_labels[test1_index],
                                    test2_labels[test2_index]), axis=0)
+
+
+  # ---- Add random noise----------
+  (height, width, channel) = train_images[0].shape
+  for i in range(int(noise*num_train)):
+    _index = randint(0, num_train-1)
+    _image = train_images[_index]
+    new_image = numpy.expand_dims(numpy.clip(255 - _image - numpy.random.normal(scale=30,
+                                  size=(height, width, channel)), 0, 255), axis=0)
+    new_label = numpy.expand_dims(train_labels[_index], axis=0)
+    train_images = numpy.vstack((train_images, new_image))
+    train_labels = numpy.concatenate((train_labels, new_label), axis=0)
+  # ------------------------------
 
   train_index = range(train_labels.shape[0])
   test_index = range(test_labels.shape[0])

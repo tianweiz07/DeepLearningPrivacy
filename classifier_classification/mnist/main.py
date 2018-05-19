@@ -15,16 +15,17 @@ data1_index = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 data2_index = [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
 DATA1_DIR = "./data/mnist/"
 DATA2_DIR = "./data/emnist/"
-MODEL1_DIR = "./model1/"
-MODEL2_DIR = "./model2/"
+MODEL1_DIR = "./model1_eval/"
+MODEL2_DIR = "./model2_eval/"
 MODEL_DIR = "./model/"
-MODEL_EVAL_DIR = "./model1/"
+MODEL1_EVAL_DIR = "./model1_eval/"
+MODEL2_EVAL_DIR = "./model2_eval/"
 NUM_TRAIN = 45000
 NUM_TEST = 8000
 
-num_sample = 100
+num_sample = 20
 num_train_sample = 80
-num_eval_sample = 10
+num_eval_sample = 20
 
 NUM_EPOCHS = 1000
 LOG_EPOCHS = 10
@@ -127,16 +128,19 @@ def evaluate():
         tf.reset_default_graph()
         g = tf.Graph()
         with tf.Session(graph = g) as sess:
-            ckpt = tf.train.get_checkpoint_state(MODEL_EVAL_DIR + str(i))
+            ckpt = tf.train.get_checkpoint_state(MODEL2_EVAL_DIR + str(i))
             g_saver = tf.train.import_meta_graph(ckpt.model_checkpoint_path + ".meta")
             g_saver.restore(sess, ckpt.model_checkpoint_path)
 
-            var = [v for v in tf.trainable_variables() if v.name == params_name][0]
-            result = sess.run(var)
-            params_list.append(result.flatten())
+            _list = []
+            for var in tf.trainable_variables():
+                result = sess.run(var)
+                _list.append(np.average(result))
+                _list.append(np.std(result))
+            params_list.append(_list)
 
     eval_x = np.stack(params_list)
-    eval_y = [[1, 0]]*num_eval_sample
+    eval_y = [[0, 1]]*num_eval_sample
 
     tf.reset_default_graph()
     g = tf.Graph()
