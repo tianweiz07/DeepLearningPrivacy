@@ -8,6 +8,9 @@ import numpy
 from six.moves import xrange 
 from random import randint
 
+import time
+from datetime import datetime
+
 from tensorflow.contrib.learn.python.learn.datasets import base
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import random_seed
@@ -265,6 +268,8 @@ def read_data_sets(data1_dir,
 
 
   # ---- Add random noise----------
+  new_image_list = []
+  new_label_list = []
   (height, width, channel) = train_images[0].shape
   for i in range(int(noise*num_train)):
     _index = randint(0, num_train-1)
@@ -272,9 +277,13 @@ def read_data_sets(data1_dir,
     new_image = numpy.expand_dims(numpy.clip(255 - _image - numpy.random.normal(scale=30,
                                   size=(height, width, channel)), 0, 255), axis=0)
     new_label = numpy.expand_dims(train_labels[_index], axis=0)
-    train_images = numpy.vstack((train_images, new_image))
-    train_labels = numpy.concatenate((train_labels, new_label), axis=0)
+    new_image_list.append(new_image)
+    new_label_list.append(new_label)
+
+  train_images = numpy.concatenate((train_images, numpy.vstack(new_image_list)), axis=0)
+  train_labels = numpy.concatenate((train_labels, numpy.concatenate(new_label_list, axis=0)), axis=0)
   # ------------------------------
+
 
   train_index = range(train_labels.shape[0])
   test_index = range(test_labels.shape[0])

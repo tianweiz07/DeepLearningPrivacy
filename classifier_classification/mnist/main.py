@@ -24,8 +24,6 @@ NUM_TRAIN = 45000
 NUM_TEST = 8000
 
 num_sample = 20
-num_train_sample = 80
-num_eval_sample = 20
 
 NUM_EPOCHS = 1000
 LOG_EPOCHS = 10
@@ -36,9 +34,9 @@ parser.add_argument('--mode', type=str, default='generate',
                     help='Either `generate`, or `classify`, or `evalute`')
 
 def generate():
-    data1 = dataset.read_data_sets(DATA1_DIR, DATA2_DIR, reshape=False, one_hot=True,
+    data1 = dataset.read_data_sets(DATA1_DIR, DATA2_DIR, reshape=False, one_hot=True, noise=1,
                                    num_train=NUM_TRAIN, num_test=NUM_TEST, data_index = data1_index)
-    data2 = dataset.read_data_sets(DATA1_DIR, DATA2_DIR, reshape=False, one_hot=True,
+    data2 = dataset.read_data_sets(DATA1_DIR, DATA2_DIR, reshape=False, one_hot=True, noise=1,
                                    num_train=NUM_TRAIN, num_test=NUM_TEST, data_index = data2_index)
 
     for i in range(num_sample):
@@ -82,6 +80,7 @@ def classify():
     params1 = np.stack(params1_list)
     params2 = np.stack(params2_list)
 
+    num_train_sample = int(num_sample* 0.8)
     train_x = np.concatenate((params1[:num_train_sample],params2[:num_train_sample]), axis=0)
     train_y = [[1, 0]]*num_train_sample + [[0, 1]]*num_train_sample
     validate_x = np.concatenate((params1[num_train_sample:],params2[num_train_sample:]), axis=0)
@@ -124,11 +123,11 @@ def classify():
 
 def evaluate():
     params_list = []
-    for i in range(num_eval_sample):
+    for i in range(num_sample):
         tf.reset_default_graph()
         g = tf.Graph()
         with tf.Session(graph = g) as sess:
-            ckpt = tf.train.get_checkpoint_state(MODEL2_EVAL_DIR + str(i))
+            ckpt = tf.train.get_checkpoint_state(MODEL1_EVAL_DIR + str(i))
             g_saver = tf.train.import_meta_graph(ckpt.model_checkpoint_path + ".meta")
             g_saver.restore(sess, ckpt.model_checkpoint_path)
 
@@ -140,7 +139,7 @@ def evaluate():
             params_list.append(_list)
 
     eval_x = np.stack(params_list)
-    eval_y = [[0, 1]]*num_eval_sample
+    eval_y = [[1, 0]]*num_sample
 
     tf.reset_default_graph()
     g = tf.Graph()
