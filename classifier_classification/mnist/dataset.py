@@ -239,6 +239,21 @@ def read_data_sets(data1_dir,
           num_index += 1
         if num_index == num_train/10:
           break
+    elif data_index[digit] == 3:
+      num_index = 0
+      for i in range(train1_labels.shape[0]):
+        if train1_labels[i] == digit:
+          train1_index.append(i)
+          num_index += 1
+        if num_index == num_train/20:
+          break
+      for i in range(train2_labels.shape[0]):
+        if train2_labels[i] == digit:
+          train2_index.append(i)
+          num_index += 1
+        if num_index == num_train/10:
+          break
+      
 
     if data_index[digit] == 1:
       num_index = 0
@@ -256,6 +271,21 @@ def read_data_sets(data1_dir,
           num_index += 1
         if num_index == num_test/10:
           break
+    elif data_index[digit] == 3:
+      num_index = 0
+      for i in range(test1_labels.shape[0]):
+        if test1_labels[i] == digit:
+          test1_index.append(i)
+          num_index += 1
+        if num_index == num_train/20:
+          break
+      for i in range(test2_labels.shape[0]):
+        if test2_labels[i] == digit:
+          test2_index.append(i)
+          num_index += 1
+        if num_index == num_train/10:
+          break
+
     
   train_images = numpy.concatenate((train1_images[train1_index], 
                                     train2_images[train2_index]), axis=0)
@@ -268,20 +298,22 @@ def read_data_sets(data1_dir,
 
 
   # ---- Add random noise----------
-  new_image_list = []
-  new_label_list = []
-  (height, width, channel) = train_images[0].shape
-  for i in range(int(noise*num_train)):
-    _index = randint(0, num_train-1)
-    _image = train_images[_index]
-    new_image = numpy.expand_dims(numpy.clip(255 - _image - numpy.random.normal(scale=30,
-                                  size=(height, width, channel)), 0, 255), axis=0)
-    new_label = numpy.expand_dims(train_labels[_index], axis=0)
-    new_image_list.append(new_image)
-    new_label_list.append(new_label)
+  if noise > 0:
+    new_image_list = []
+    new_label_list = []
+    (height, width, channel) = train_images[0].shape
 
-  train_images = numpy.concatenate((train_images, numpy.vstack(new_image_list)), axis=0)
-  train_labels = numpy.concatenate((train_labels, numpy.concatenate(new_label_list, axis=0)), axis=0)
+    for i in range(int(noise*num_train)):
+      _index = randint(0, num_train-1)
+      _image = train_images[_index]
+      new_image = numpy.expand_dims(numpy.clip(255 - _image - numpy.random.normal(scale=30,
+                                  size=(height, width, channel)), 0, 255), axis=0)
+      new_label = numpy.expand_dims(train_labels[_index], axis=0)
+      new_image_list.append(new_image)
+      new_label_list.append(new_label)
+
+    train_images = numpy.concatenate((train_images, numpy.vstack(new_image_list)), axis=0)
+    train_labels = numpy.concatenate((train_labels, numpy.concatenate(new_label_list, axis=0)), axis=0)
   # ------------------------------
 
 

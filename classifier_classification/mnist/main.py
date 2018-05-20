@@ -13,17 +13,19 @@ import dataset
 
 data1_index = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 data2_index = [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+data3_index = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
 DATA1_DIR = "./data/mnist/"
 DATA2_DIR = "./data/emnist/"
 MODEL1_DIR = "./model1_eval/"
 MODEL2_DIR = "./model2_eval/"
+MODEL3_DIR = "./model3_eval/"
 MODEL_DIR = "./model/"
 MODEL1_EVAL_DIR = "./model1_eval/"
 MODEL2_EVAL_DIR = "./model2_eval/"
 NUM_TRAIN = 45000
 NUM_TEST = 8000
 
-num_sample = 20
+num_sample = 10
 
 NUM_EPOCHS = 1000
 LOG_EPOCHS = 10
@@ -34,15 +36,18 @@ parser.add_argument('--mode', type=str, default='generate',
                     help='Either `generate`, or `classify`, or `evalute`')
 
 def generate():
-    data1 = dataset.read_data_sets(DATA1_DIR, DATA2_DIR, reshape=False, one_hot=True, noise=1,
-                                   num_train=NUM_TRAIN, num_test=NUM_TEST, data_index = data1_index)
-    data2 = dataset.read_data_sets(DATA1_DIR, DATA2_DIR, reshape=False, one_hot=True, noise=1,
-                                   num_train=NUM_TRAIN, num_test=NUM_TEST, data_index = data2_index)
+#    data1 = dataset.read_data_sets(DATA1_DIR, DATA2_DIR, reshape=False, one_hot=True, noise=1,
+#                                   num_train=NUM_TRAIN, num_test=NUM_TEST, data_index = data1_index)
+#    data2 = dataset.read_data_sets(DATA1_DIR, DATA2_DIR, reshape=False, one_hot=True, noise=1,
+#                                   num_train=NUM_TRAIN, num_test=NUM_TEST, data_index = data2_index)
+    data3 = dataset.read_data_sets(DATA1_DIR, DATA2_DIR, reshape=False, one_hot=True, noise=0,
+                                   num_train=NUM_TRAIN, num_test=NUM_TEST, data_index = data3_index)
 
     for i in range(num_sample):
         print("---------- Iteration " + str(i) + " ----------")
-        train.Train(MODEL1_DIR + str(i), data1)
-        train.Train(MODEL2_DIR + str(i), data2)
+#        train.Train(MODEL1_DIR + str(i), data1)
+#        train.Train(MODEL2_DIR + str(i), data2)
+        train.Train(MODEL3_DIR + str(i), data3)
 
 def classify():
     params1_list = []
@@ -127,7 +132,7 @@ def evaluate():
         tf.reset_default_graph()
         g = tf.Graph()
         with tf.Session(graph = g) as sess:
-            ckpt = tf.train.get_checkpoint_state(MODEL1_EVAL_DIR + str(i))
+            ckpt = tf.train.get_checkpoint_state(MODEL2_EVAL_DIR + str(i))
             g_saver = tf.train.import_meta_graph(ckpt.model_checkpoint_path + ".meta")
             g_saver.restore(sess, ckpt.model_checkpoint_path)
 
@@ -139,7 +144,7 @@ def evaluate():
             params_list.append(_list)
 
     eval_x = np.stack(params_list)
-    eval_y = [[1, 0]]*num_sample
+    eval_y = [[0, 1]]*num_sample
 
     tf.reset_default_graph()
     g = tf.Graph()
