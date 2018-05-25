@@ -220,7 +220,7 @@ if __name__ == '__main__':
     parser.add_argument('--attack', type=str, default=CAP)  # attack type
     parser.add_argument('--bits', type=int, default=16)     # number of LSB set to secrets
     parser.add_argument('--n', type=int, default=1000)      # number of data points to be encoded in LSB
-    parser.add_argument('--cr', type=float, default=1.0)    # malicious term ratio
+    parser.add_argument('--cr', type=float, default=1)    # malicious term ratio
     parser.add_argument('--p', type=float, default=1.0)     # proportion of malicious data to training data
     parser.add_argument('--model', type=int, default=5)     # number of blocks in resnet
 
