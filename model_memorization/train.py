@@ -144,6 +144,7 @@ def main(num_epochs=500, lr=0.1, attack=CAP, res_n=5, corr_ratio=0.0, mal_p=0.1)
     prediction = lasagne.layers.get_output(network)
     loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
     loss = loss.mean()
+
     # We could add some weight decay as well here, see lasagne.regularization.
     all_layers = lasagne.layers.get_all_layers(network)
     l2_penalty = lasagne.regularization.regularize_layer_params(all_layers, lasagne.regularization.l2) * 0.0001
@@ -164,12 +165,15 @@ def main(num_epochs=500, lr=0.1, attack=CAP, res_n=5, corr_ratio=0.0, mal_p=0.1)
 
     # As a bonus, also create an expression for the classification accuracy:
     if target_var.ndim == 1:
+        train_acc = T.sum(T.eq(T.argmax(prediction, axis=1), target_var), dtype=theano.config.floatX)
         test_acc = T.sum(T.eq(T.argmax(test_prediction, axis=1), target_var), dtype=theano.config.floatX)
     else:
+        train_acc = T.sum(T.eq(T.argmax(prediction, axis=1), T.argmax(target_var, axis=1)),
+                         dtype=theano.config.floatX)
         test_acc = T.sum(T.eq(T.argmax(test_prediction, axis=1), T.argmax(target_var, axis=1)),
                          dtype=theano.config.floatX)
 
-    train_fn = theano.function([input_var, target_var], [loss, r], updates=updates)
+    train_fn = theano.function([input_var, target_var], [loss, train_acc], updates=updates)
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
 
     # Finally, launch the training loop.
@@ -187,19 +191,19 @@ def main(num_epochs=500, lr=0.1, attack=CAP, res_n=5, corr_ratio=0.0, mal_p=0.1)
         train_err = 0
         train_batches = 0
         start_time = time.time()
-        train_r = 0
+        train_acc = 0
         for batch in iterate_minibatches(X_train, y_train, 128, shuffle=True, augment=True):
             inputs, targets = batch
-            err, r = train_fn(inputs, targets)
-            train_r += r
+            err, acc = train_fn(inputs, targets)
+            train_acc += acc
             train_err += err
             train_batches += 1
         if attack == CAP:
             # And a full pass over the malicious data
             for batch in iterate_minibatches(X_train_mal, y_train_mal, 128, shuffle=True, augment=False):
                 inputs, targets = batch
-                err, r = train_fn(inputs, targets)
-                train_r += r
+                err, acc = train_fn(inputs, targets)
+                train_acc += acc
                 train_err += err
                 train_batches += 1
 
@@ -227,21 +231,19 @@ def main(num_epochs=500, lr=0.1, attack=CAP, res_n=5, corr_ratio=0.0, mal_p=0.1)
 
         if (epoch + 1) == 41 or (epoch + 1) == 61:
             new_lr = sh_lr.get_value() * 0.1
-            sys.stderr.write("New LR:" + str(new_lr) + "\n")
             sh_lr.set_value(lasagne.utils.floatX(new_lr))
 
         # Then we sys.stderr.write the results for this epoch:
-        sys.stderr.write("Epoch {} of {} took {:.3f}s\n".format(epoch + 1, num_epochs, time.time() - start_time))
-        sys.stderr.write("  training loss:\t\t{:.6f}\n".format(train_err / train_batches))
+        sys.stderr.write("Epoch_{}: ".format(epoch + 1))
+        sys.stderr.write("training_loss: {:.6f}  ".format(train_err/train_batches))
+        sys.stderr.write("training_accuracy: {:.2f}%  ".format(train_acc/train_batches/500*100))
         if attack == CAP:
             sys.stderr.write("  malicious loss:\t\t{:.6f}\n".format(mal_err / mal_batches))
             sys.stderr.write("  malicious accuracy:\t\t{:.2f} %\n".format(
                 mal_acc / mal_batches / 500 * 100))
-        if attack in {SGN, COR}:
-            sys.stderr.write("  training r:\t\t{:.6f}\n".format(train_r / train_batches))
 
-        sys.stderr.write("  validation loss:\t\t{:.6f}\n".format(val_err / val_batches))
-        sys.stderr.write("  validation accuracy:\t\t{:.2f} %\n".format(val_acc / val_batches / 500 * 100))
+        sys.stderr.write("validation_loss: {:.6f}  ".format(val_err/val_batches))
+        sys.stderr.write("validation_accuracy: {:.2f}%\n".format(val_acc/val_batches/500*100))
 
     # After training, we compute and sys.stderr.write the test error:
     test_err = 0
