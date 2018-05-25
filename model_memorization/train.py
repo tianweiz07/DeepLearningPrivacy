@@ -236,7 +236,7 @@ def main(num_epochs=500, lr=0.1, attack=CAP, res_n=5, corr_ratio=0.0, mal_p=0.1)
         # Then we sys.stderr.write the results for this epoch:
         sys.stderr.write("Epoch_{}: ".format(epoch + 1))
         sys.stderr.write("training_loss: {:.6f}  ".format(train_err/train_batches))
-        sys.stderr.write("training_accuracy: {:.2f}%  ".format(train_acc/train_batches/500*100))
+        sys.stderr.write("training_accuracy: {:.2f}%  ".format(train_acc/train_batches/128*100))
         if attack == CAP:
             sys.stderr.write("  malicious loss:\t\t{:.6f}\n".format(mal_err / mal_batches))
             sys.stderr.write("  malicious accuracy:\t\t{:.2f} %\n".format(
