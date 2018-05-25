@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import random
 
 DATA_PATH = './'
 
@@ -43,7 +44,7 @@ def _load_batch_cifar100(filename):
     return data.astype('float32'), labels.astype('int32')
 
 
-def load_cifar10():
+def load_cifar10(ratio=0):
     dir = DATA_PATH + 'cifar-10-batches-py/'
     train_x, train_y = [], []
 
@@ -58,6 +59,14 @@ def load_cifar10():
     train_x = np.concatenate(train_x, axis=0)
     train_y = np.concatenate(train_y, axis=0)
 
+    num_sample = train_x.shape[0]
+    if ratio>0:
+        index = random.sample(range(num_sample), int(ratio*num_sample))
+        index.sort()
+        for i in index:
+            train_x[i] = np.clip(train_x[i] + np.random.normal(scale=0.2,
+                                 size=train_x.shape[-1:]), 0, 1)
+
     return train_x, train_y, test_x, test_y
 
 
@@ -68,9 +77,9 @@ def load_cifar100():
     return train_x, train_y, test_x, test_y
 
 
-def load_cifar(label_size=10):
+def load_cifar(label_size=10, ratio=0):
     if label_size == 10:
-        return load_cifar10()
+        return load_cifar10(ratio)
     elif label_size == 100:
         return load_cifar100()
 
