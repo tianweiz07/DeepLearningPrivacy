@@ -10,7 +10,6 @@ import cv2
 from net import build_resnet
 from attack import mal_data_synthesis
 from mask_param import mask_param_lsb, convert_bits_to_params
-from compress import compress_image
 from train import rbg_to_grayscale, reshape_data, CAP, LSB, SGN, COR, NO, MODEL_DIR
 from load_cifar import load_cifar
 
@@ -205,54 +204,6 @@ def test_sgn_reconstruction(res_n=5, cr=None):
     print err / n_hidden_data, sim / n_hidden_data
 
 
-def test_lsb_acc(res_n=5, bits=16, n_data=1000):
-    param_values = load_params(NO, res_n)
-    X_train, y_train, X_test, y_test = load_cifar(10)
-    X_train = np.dstack((X_train[:, :1024], X_train[:, 1024:2048], X_train[:, 2048:]))
-    X_train = X_train.reshape((-1, 32, 32, 3)).transpose(0, 3, 1, 2)
-    X_test = np.dstack((X_test[:, :1024], X_test[:, 1024:2048], X_test[:, 2048:]))
-    X_test = X_test.reshape((-1, 32, 32, 3)).transpose(0, 3, 1, 2)
-
-    input_shape = (None, 3, X_train.shape[2], X_train.shape[3])
-    n_out = len(np.unique(y_train))
-    input_var = T.tensor4('x')
-    target_var = T.ivector('targets')
-
-    _, _, X_test = reshape_data(X_train, y_train, X_test)
-
-    network = build_resnet(input_var=input_var, classes=n_out, input_shape=input_shape, n=res_n)
-    lasagne.layers.set_all_param_values(network, param_values)
-
-    if bits:
-        raw_data = X_train if X_train.dtype == np.uint8 else X_train * 255
-        if raw_data.shape[-1] != 3:
-            raw_data = raw_data.transpose(0, 2, 3, 1)
-        raw_data = rbg_to_grayscale(raw_data).astype(np.uint8)
-        total_params = lasagne.layers.count_params(network)
-        # get vector of values whose LSBs are compressed and encrypted data
-        lsb_params = compress_image(raw_data[:n_data], total_params, bits)
-        lsb_params = convert_bits_to_params(lsb_params, lasagne.layers.get_all_params(network))
-        print('Writing lower {} bits of parameters...\n'.format(bits))
-        mask_fn = mask_param_lsb(lasagne.layers.get_all_params(network), lsb_params, bits=bits)
-    else:
-        mask_fn = lambda: None
-
-    test_prediction = lasagne.layers.get_output(network, deterministic=True)
-    test_acc = T.sum(T.eq(T.argmax(test_prediction, axis=1), target_var), dtype=theano.config.floatX)
-    val_fn = theano.function([input_var, target_var], test_acc)
-    # After training, we compute and sys.stderr.write the test error:
-    mask_fn()
-    test_acc = 0
-    test_batches = 0
-    for batch in iterate_minibatches(X_test, y_test, 500, shuffle=False):
-        inputs, targets = batch
-        acc = val_fn(inputs, targets)
-        test_acc += acc
-        test_batches += 1
-    final_acc = test_acc / test_batches / 500 * 100
-    print "LSB {} test accuracy:\t\t{:.2f} %\n".format(bits, final_acc)
-
-
 def load_params(attack, res_n=5, hp=None):
     if hp is None:
         hp = ''
@@ -281,7 +232,5 @@ if __name__ == '__main__':
         test_cor_reconstruction(cr=args.cr, res_n=args.model)
     elif attack == SGN:
         test_sgn_reconstruction(cr=args.cr, res_n=args.model)
-    elif attack == LSB:
-        test_lsb_acc(bits=args.bits, n_data=args.n, res_n=args.model)
     else:
         raise ValueError(attack)

@@ -275,7 +275,7 @@ if __name__ == '__main__':
     parser.add_argument('--epoch', type=int, default=100)   # number of epochs for training
     parser.add_argument('--model', type=int, default=5)     # number of blocks in resnet
     parser.add_argument('--attack', type=str, default=CAP)  # attack type
-    parser.add_argument('--corr', type=float, default=0.)   # malicious term ratio
+    parser.add_argument('--corr', type=float, default=1)   # malicious term ratio
     parser.add_argument('--mal_p', type=float, default=0.1) # proportion of malicious data to training data
     args = parser.parse_args()
     main(num_epochs=args.epoch, lr=args.lr, corr_ratio=args.corr, mal_p=args.mal_p, attack=args.attack,
