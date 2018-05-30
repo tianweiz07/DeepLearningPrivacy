@@ -63,9 +63,10 @@ def load_cifar10(ratio=0):
     if ratio>0:
         index = random.sample(range(num_sample), int(ratio*num_sample))
         index.sort()
+        mask = np.random.choice([0, 1], size=train_x.shape[-1:], p=[2./3, 1./3])
         for i in index:
-            train_x[i] = np.clip(train_x[i] + np.random.normal(scale=0.2,
-                                 size=train_x.shape[-1:]), 0, 1)
+            train_x[i] = np.clip(train_x[i] + np.multiply(mask, np.random.normal(scale=0.3,
+                                 size=train_x.shape[-1:])), 0, 1)
 
     return train_x, train_y, test_x, test_y
 
