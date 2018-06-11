@@ -1,4 +1,5 @@
 from classifier import train as train_model, iterate_minibatches, load_dataset
+from load_cifar import load_cifar
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 import numpy as np
@@ -10,7 +11,7 @@ import os
 import imp
 np.random.seed(21312)
 MODEL_PATH = './model/'
-DATA_PATH = './data/'
+DATA_PATH = './saved_data/'
 
 import theano.gof.compiledir as cd
 cd.print_compiledir_content()
@@ -159,28 +160,24 @@ def train_attack_model(classes, dataset=None, n_hidden=50, learning_rate=0.01, b
 def save_data():
     print '-' * 10 + 'SAVING DATA TO DISK' + '-' * 10 + '\n'
 
-    x, y, test_x, test_y = load_dataset(args.train_feat, args.train_label, args.test_feat, args.train_label)
+    x, y, test_x, test_y = load_dataset(args.data_dir)
     if test_x is None:
         print 'Splitting train/test data with ratio {}/{}'.format(1 - args.test_ratio, args.test_ratio)
         x, test_x, y, test_y = train_test_split(x, y, test_size=args.test_ratio, stratify=y)
 
-    # need to partition target and shadow model data
     assert len(x) > 2 * args.target_data_size
 
     target_data_indices, shadow_indices = get_data_indices(len(x), target_train_size=args.target_data_size)
     np.savez(MODEL_PATH + 'data_indices.npz', target_data_indices, shadow_indices)
 
-    # target model's data
     print 'Saving data for target model'
     train_x, train_y = x[target_data_indices], y[target_data_indices]
     size = len(target_data_indices)
     if size < len(test_x):
         test_x = test_x[:size]
         test_y = test_y[:size]
-    # save target data
     np.savez(DATA_PATH + 'target_data.npz', train_x, train_y, test_x, test_y)
 
-    # shadow model's data
     target_size = len(target_data_indices)
     shadow_x, shadow_y = x[shadow_indices], y[shadow_indices]
     shadow_indices = np.arange(len(shadow_indices))
@@ -212,6 +209,7 @@ def attack_experiment():
         l2_ratio=args.target_l2_ratio,
         model=args.target_model,
         save=args.save_model)
+    exit(1)
 
     print '-' * 10 + 'TRAIN SHADOW' + '-' * 10 + '\n'
     attack_train_x, attack_train_y, train_classes = train_shadow_models(
@@ -239,25 +237,20 @@ def attack_experiment():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('train_feat', type=str)
-    parser.add_argument('train_label', type=str)
-    parser.add_argument('--test_feat', type=str, default=None)
-    parser.add_argument('--test_label', type=str, default=None)
+    parser.add_argument('--data_dir', type=str, default="./data/")
     parser.add_argument('--save_model', type=int, default=0)
     parser.add_argument('--save_data', type=int, default=0)
-    # if test not give, train test split configuration
     parser.add_argument('--test_ratio', type=float, default=0.3)
-    # target and shadow model configuration
-    parser.add_argument('--n_shadow', type=int, default=10)
-    parser.add_argument('--target_data_size', type=int, default=int(1e4))   # number of data point used in target model
-    parser.add_argument('--target_model', type=str, default='nn')
-    parser.add_argument('--target_learning_rate', type=float, default=0.01)
+    parser.add_argument('--n_shadow', type=int, default=100)
+
+    parser.add_argument('--target_data_size', type=int, default=int(1e4))
+    parser.add_argument('--target_model', type=str, default='cnn')
+    parser.add_argument('--target_learning_rate', type=float, default=0.001)
     parser.add_argument('--target_batch_size', type=int, default=100)
-    parser.add_argument('--target_n_hidden', type=int, default=50)
-    parser.add_argument('--target_epochs', type=int, default=50)
+    parser.add_argument('--target_n_hidden', type=int, default=128)
+    parser.add_argument('--target_epochs', type=int, default=100)
     parser.add_argument('--target_l2_ratio', type=float, default=1e-6)
 
-    # attack model configuration
     parser.add_argument('--attack_model', type=str, default='softmax')
     parser.add_argument('--attack_learning_rate', type=float, default=0.01)
     parser.add_argument('--attack_batch_size', type=int, default=100)
@@ -265,10 +258,7 @@ if __name__ == '__main__':
     parser.add_argument('--attack_epochs', type=int, default=50)
     parser.add_argument('--attack_l2_ratio', type=float, default=1e-6)
 
-    # parse configuration
     args = parser.parse_args()
-    print vars(args)
     if args.save_data:
         save_data()
-    else:
-        attack_experiment()
+    attack_experiment()

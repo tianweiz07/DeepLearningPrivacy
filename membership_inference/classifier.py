@@ -4,7 +4,7 @@ import numpy as np
 import lasagne
 import theano
 import argparse
-
+from load_cifar import load_cifar
 
 def iterate_minibatches(inputs, targets, batch_size, shuffle=True):
     assert len(inputs) == len(targets)
@@ -48,10 +48,33 @@ def get_softmax_model(n_in, n_out):
         nonlinearity=lasagne.nonlinearities.softmax)
     return net
 
+def get_cnn_model(n_in, n_hidden, n_out):
+    net = dict()
+    net['input'] = lasagne.layers.InputLayer((None, 3, 32, 32))
+    net['conv1'] = lasagne.layers.Conv2DLayer(
+            net['input'], num_filters=32, filter_size=(5, 5),
+            nonlinearity=lasagne.nonlinearities.tanh,
+            W=lasagne.init.GlorotUniform())
+    net['pool1'] = lasagne.layers.MaxPool2DLayer(net['conv1'], pool_size=(2, 2))
+    net['conv2'] = lasagne.layers.Conv2DLayer(
+            net['pool1'], num_filters=32, filter_size=(5, 5),
+            nonlinearity=lasagne.nonlinearities.tanh,
+            W=lasagne.init.GlorotUniform())
+    net['pool2'] = lasagne.layers.MaxPool2DLayer(net['conv2'], pool_size=(2, 2))
+    net['fc'] = lasagne.layers.DenseLayer(
+            net['pool2'],
+            num_units=n_hidden,
+            nonlinearity=lasagne.nonlinearities.tanh)
+    net['output'] = lasagne.layers.DenseLayer(
+            net['fc'],
+            num_units=n_out,
+            nonlinearity=lasagne.nonlinearities.softmax)
+    return net
 
-def train(dataset, n_hidden=50, batch_size=100, epochs=100, learning_rate=0.01, model='nn', l2_ratio=1e-7,
-          rtn_layer=True):
+
+def train(dataset, n_hidden=50, batch_size=100, epochs=100, learning_rate=0.01, model='nn', l2_ratio=1e-7, rtn_layer=True):
     train_x, train_y, test_x, test_y = dataset
+
     n_in = train_x.shape[1]
     n_out = len(np.unique(train_y))
 
@@ -59,14 +82,25 @@ def train(dataset, n_hidden=50, batch_size=100, epochs=100, learning_rate=0.01, 
         batch_size = len(train_y)
 
     print 'Building model with {} training data, {} classes...'.format(len(train_x), n_out)
-    input_var = T.matrix('x')
+    if model == 'cnn':
+        train_x = np.dstack((train_x[:, :1024], train_x[:, 1024:2048], train_x[:, 2048:]))
+        train_x = train_x.reshape((-1, 32, 32, 3)).transpose(0, 3, 1, 2)
+        test_x = np.dstack((test_x[:, :1024], test_x[:, 1024:2048], test_x[:, 2048:]))
+        test_x = test_x.reshape((-1, 32, 32, 3)).transpose(0, 3, 1, 2)
+        input_var = T.tensor4('x')
+    else:
+        input_var = T.matrix('x')
     target_var = T.ivector('y')
+
     if model == 'nn':
         print 'Using neural network...'
         net = get_nn_model(n_in, n_hidden, n_out)
-    else:
+    elif model == 'softmax':
         print 'Using softmax regression...'
         net = get_softmax_model(n_in, n_out)
+    else:
+        print 'Using convolutional neural network...'
+        net = get_cnn_model(n_in, n_hidden, n_out)
 
     net['input'].input_var = input_var
     output_layer = net['output']
@@ -90,19 +124,14 @@ def train(dataset, n_hidden=50, batch_size=100, epochs=100, learning_rate=0.01, 
         for input_batch, target_batch in iterate_minibatches(train_x, train_y, batch_size):
             loss += train_fn(input_batch, target_batch)
         loss = round(loss, 3)
-        print 'Epoch {}, train loss {}'.format(epoch, loss)
 
-    pred_y = []
-    for input_batch, _ in iterate_minibatches(train_x, train_y, batch_size, shuffle=False):
-        pred = test_fn(input_batch)
-        pred_y.append(np.argmax(pred, axis=1))
-    pred_y = np.concatenate(pred_y)
+        pred_y = []
+        for input_batch, _ in iterate_minibatches(train_x, train_y, batch_size, shuffle=False):
+            pred = test_fn(input_batch)
+            pred_y.append(np.argmax(pred, axis=1))
+        pred_y = np.concatenate(pred_y)
+        train_acc = accuracy_score(train_y, pred_y)
 
-    print 'Training Accuracy: {}'.format(accuracy_score(train_y, pred_y))
-    print classification_report(train_y, pred_y)
-
-    if test_x is not None:
-        print 'Testing...'
         pred_y = []
 
         if batch_size > len(test_y):
@@ -112,28 +141,18 @@ def train(dataset, n_hidden=50, batch_size=100, epochs=100, learning_rate=0.01, 
             pred = test_fn(input_batch)
             pred_y.append(np.argmax(pred, axis=1))
         pred_y = np.concatenate(pred_y)
-        print 'Testing Accuracy: {}'.format(accuracy_score(test_y, pred_y))
-        print classification_report(test_y, pred_y)
+        test_acc = accuracy_score(test_y, pred_y)
+        print 'Epoch {}, train loss {}, Training Accuracy: {}, Testing Accuracy: {}'\
+              .format(epoch, loss, train_acc, test_acc)
 
-    # return the query function
     if rtn_layer:
         return output_layer
     else:
         return pred_y
 
 
-def load_dataset(train_feat, train_label, test_feat=None, test_label=None):
-    train_x = np.genfromtxt(train_feat, delimiter=',', dtype='float32')
-    train_y = np.genfromtxt(train_label, dtype='int32')
-    min_y = np.min(train_y)
-    train_y -= min_y
-    if test_feat is not None and test_label is not None:
-        test_x = np.genfromtxt(train_feat, delimiter=',', dtype='float32')
-        test_y = np.genfromtxt(train_label, dtype='int32')
-        test_y -= min_y
-    else:
-        test_x = None
-        test_y = None
+def load_dataset(data_dir):
+    train_x, train_y, test_x, test_y = load_cifar(10, data_dir)
     return train_x, train_y, test_x, test_y
 
 
