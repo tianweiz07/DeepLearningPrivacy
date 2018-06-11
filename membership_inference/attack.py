@@ -56,16 +56,20 @@ def train_target_model(dataset, epochs=100, batch_size=100, learning_rate=0.01, 
     train_x, train_y, test_x, test_y = dataset
     output_layer = train_model(dataset, n_hidden=n_hidden, epochs=epochs, learning_rate=learning_rate,
                                batch_size=batch_size, model=model, l2_ratio=l2_ratio)
-    # test data for attack model
     attack_x, attack_y = [], []
-    input_var = T.matrix('x')
+    if model == 'cnn':
+        train_x = np.dstack((train_x[:, :1024], train_x[:, 1024:2048], train_x[:, 2048:]))
+        train_x = train_x.reshape((-1, 32, 32, 3)).transpose(0, 3, 1, 2)
+        test_x = np.dstack((test_x[:, :1024], test_x[:, 1024:2048], test_x[:, 2048:]))
+        test_x = test_x.reshape((-1, 32, 32, 3)).transpose(0, 3, 1, 2)
+        input_var = T.tensor4('x')
+    else:
+        input_var = T.matrix('x')
     prob = lasagne.layers.get_output(output_layer, input_var, deterministic=True)
     prob_fn = theano.function([input_var], prob)
-    # data used in training, label is 1
     for batch in iterate_minibatches(train_x, train_y, batch_size, False):
         attack_x.append(prob_fn(batch[0]))
         attack_y.append(np.ones(batch_size))
-    # data not used in training, label is 0
     for batch in iterate_minibatches(test_x, test_y, batch_size, False):
         attack_x.append(prob_fn(batch[0]))
         attack_y.append(np.zeros(batch_size))
@@ -85,9 +89,10 @@ def train_target_model(dataset, epochs=100, batch_size=100, learning_rate=0.01, 
 
 def train_shadow_models(n_hidden=50, epochs=100, n_shadow=20, learning_rate=0.05, batch_size=100, l2_ratio=1e-7,
                         model='nn', save=True):
-    # for getting probabilities
-    input_var = T.matrix('x')
-    # for attack model
+    if model == 'cnn':
+        input_var = T.tensor4('x')
+    else:
+        input_var = T.matrix('x')
     attack_x, attack_y = [], []
     classes = []
     for i in xrange(n_shadow):
@@ -97,6 +102,13 @@ def train_shadow_models(n_hidden=50, epochs=100, n_shadow=20, learning_rate=0.05
         # train model
         output_layer = train_model(data, n_hidden=n_hidden, epochs=epochs, learning_rate=learning_rate,
                                    batch_size=batch_size, model=model, l2_ratio=l2_ratio)
+
+        if model == 'cnn':
+            train_x = np.dstack((train_x[:, :1024], train_x[:, 1024:2048], train_x[:, 2048:]))
+            train_x = train_x.reshape((-1, 32, 32, 3)).transpose(0, 3, 1, 2)
+            test_x = np.dstack((test_x[:, :1024], test_x[:, 1024:2048], test_x[:, 2048:]))
+            test_x = test_x.reshape((-1, 32, 32, 3)).transpose(0, 3, 1, 2)
+
         prob = lasagne.layers.get_output(output_layer, input_var, deterministic=True)
         prob_fn = theano.function([input_var], prob)
         print 'Gather training data for attack model'
@@ -209,7 +221,6 @@ def attack_experiment():
         l2_ratio=args.target_l2_ratio,
         model=args.target_model,
         save=args.save_model)
-    exit(1)
 
     print '-' * 10 + 'TRAIN SHADOW' + '-' * 10 + '\n'
     attack_train_x, attack_train_y, train_classes = train_shadow_models(
@@ -238,24 +249,24 @@ def attack_experiment():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', type=str, default="./data/")
-    parser.add_argument('--save_model', type=int, default=0)
+    parser.add_argument('--save_model', type=int, default=1)
     parser.add_argument('--save_data', type=int, default=0)
     parser.add_argument('--test_ratio', type=float, default=0.3)
-    parser.add_argument('--n_shadow', type=int, default=100)
+    parser.add_argument('--n_shadow', type=int, default=3)
 
     parser.add_argument('--target_data_size', type=int, default=int(1e4))
     parser.add_argument('--target_model', type=str, default='cnn')
     parser.add_argument('--target_learning_rate', type=float, default=0.001)
     parser.add_argument('--target_batch_size', type=int, default=100)
     parser.add_argument('--target_n_hidden', type=int, default=128)
-    parser.add_argument('--target_epochs', type=int, default=100)
+    parser.add_argument('--target_epochs', type=int, default=1)
     parser.add_argument('--target_l2_ratio', type=float, default=1e-6)
 
     parser.add_argument('--attack_model', type=str, default='softmax')
-    parser.add_argument('--attack_learning_rate', type=float, default=0.01)
-    parser.add_argument('--attack_batch_size', type=int, default=100)
+    parser.add_argument('--attack_learning_rate', type=float, default=0.001)
+    parser.add_argument('--attack_batch_size', type=int, default=1)
     parser.add_argument('--attack_n_hidden', type=int, default=50)
-    parser.add_argument('--attack_epochs', type=int, default=50)
+    parser.add_argument('--attack_epochs', type=int, default=100)
     parser.add_argument('--attack_l2_ratio', type=float, default=1e-6)
 
     args = parser.parse_args()
