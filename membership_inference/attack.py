@@ -9,6 +9,7 @@ import theano
 import argparse
 import os
 import imp
+import random
 np.random.seed(21312)
 MODEL_PATH = './model/'
 DATA_PATH = './saved_data/'
@@ -62,13 +63,24 @@ def load_attack_class():
 
 
 def train_target_model(epochs=100, batch_size=100, learning_rate=0.01, l2_ratio=1e-7,
-                       n_hidden=50, model='nn', save=True):
+                       n_hidden=50, model='nn', save=True, ratio = 0):
     print '-' * 10 + 'TRAIN TARGET' + '-' * 10 + '\n'
     dataset = load_data('target_data.npz')
     train_x, train_y, test_x, test_y = dataset
+    num_sample = train_x.shape[0]
+    if ratio>0:
+        index = random.sample(range(num_sample), int(ratio*num_sample))
+        index.sort()
+        mask = np.random.choice([0, 1], size=train_x.shape[-1:], p=[2./3, 1./3])
+        for i in index:
+            train_x[i] = np.clip(train_x[i] + np.multiply(mask, np.random.normal(scale=0.3,
+                                 size=train_x.shape[-1:])), 0, 1)
     output_layer = train_model(dataset, n_hidden=n_hidden, epochs=epochs, learning_rate=learning_rate,
                                batch_size=batch_size, model=model, l2_ratio=l2_ratio)
+
     attack_x, attack_y = [], []
+    dataset = load_data('target_data.npz')
+    train_x, train_y, test_x, test_y = dataset
     if model == 'cnn':
         train_x = np.dstack((train_x[:, :1024], train_x[:, 1024:2048], train_x[:, 2048:]))
         train_x = train_x.reshape((-1, 32, 32, 3)).transpose(0, 3, 1, 2)
@@ -91,12 +103,12 @@ def train_target_model(epochs=100, batch_size=100, learning_rate=0.01, l2_ratio=
     attack_x = attack_x.astype('float32')
     attack_y = attack_y.astype('int32')
 
+    classes = np.concatenate([train_y, test_y])
     if save:
         np.savez(MODEL_PATH + 'attack_test_data.npz', attack_x, attack_y)
         np.savez(MODEL_PATH + 'target_model.npz', *lasagne.layers.get_all_param_values(output_layer))
         np.savez(MODEL_PATH + 'attack_test_class.npz', classes)
 
-    classes = np.concatenate([train_y, test_y])
     return attack_x, attack_y, classes
 
 
@@ -234,6 +246,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=int, default=3)
     parser.add_argument('--test_ratio', type=float, default=0.3)
     parser.add_argument('--n_shadow', type=int, default=100)
+    parser.add_argument('--noise_ratio', type=float, default=0)
 
     parser.add_argument('--target_data_size', type=int, default=int(1e4))
     parser.add_argument('--target_model', type=str, default='cnn')
@@ -263,7 +276,8 @@ if __name__ == '__main__':
             n_hidden=args.target_n_hidden,
             l2_ratio=args.target_l2_ratio,
             model=args.target_model,
-            save=args.save_model)
+            save=args.save_model,
+            ratio=args.noise_ratio)
     elif args.mode == 2:
         # train shadow model
         train_shadow_models(
