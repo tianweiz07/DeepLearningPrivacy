@@ -1,5 +1,4 @@
 import tensorflow as tf
-from keras.datasets import cifar10, mnist
 import numpy as np
 from PIL import Image
 import matplotlib
@@ -9,7 +8,6 @@ import os
 import cv2
 from load_cifar import load_cifar
 
-label_index = 0
 MODEL_DIR = "./checkpoint/"
 
 def Convert2Image(array, file_location):
@@ -18,39 +16,25 @@ def Convert2Image(array, file_location):
     img = Image.fromarray(data, 'RGB')
     img.save(file_location)
 
-#(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-#x_train = np.concatenate((x_train, x_test), axis = 0)/255.0
-
-x_train, y_train, x_test, y_test = load_cifar(10)
-x_train = x_train.reshape((-1, 3, 32, 32)).transpose((0, 2, 3, 1))
-x_test = x_test.reshape((-1, 3, 32, 32)).transpose((0, 2, 3, 1))
-x_train = np.concatenate((x_train, x_test), axis = 0)
-y_train = np.concatenate((y_train, y_test), axis = 0)
-
-index_train = [i for i in range(y_train.shape[0]) if (y_train[i] != label_index)]
-x_train = np.delete(x_train, index_train, 0)
-
-#for i in range(6):
-#    Convert2Image(x_train[i], "/home/tianweiz/image/"+str(i)+".png")
-
-#fig, axes = plt.subplots(figsize=(20, 4), nrows=1, ncols=6, sharey=True, sharex=False)
-#for i in range(6):
-#    axes[i].xaxis.set_visible(False)
-#    axes[i].yaxis.set_visible(False)
-#    im = axes[i].imshow(x_train[i])
-#fig.savefig("/home/tianweiz/image.png")
-#exit(1)
 
 
 class DCGAN:
 
-    def __init__(self, x_train, gen_dims=100):
-        self.training_set = x_train
+    def __init__(self, gen_dims=100, label_index=0):
         self.samples = []
         self.losses = []
         self.gen_dims = gen_dims
         self.weights = []
 
+        self.label_index = 0
+        x_train, y_train, x_test, y_test = load_cifar(10)
+        x_train = x_train.reshape((-1, 3, 32, 32)).transpose((0, 2, 3, 1))
+        x_test = x_test.reshape((-1, 3, 32, 32)).transpose((0, 2, 3, 1))
+        x_train = np.concatenate((x_train, x_test), axis = 0)
+        y_train = np.concatenate((y_train, y_test), axis = 0)
+
+        index_train = [i for i in range(y_train.shape[0]) if (y_train[i] != label_index)]
+        self.training_set = np.delete(x_train, index_train, 0)
 
     def __generator(self, input_layer, kernel_size=5, reuse=False, lrelu_slope=0.2, 
                     kernel_initializer=tf.contrib.layers.xavier_initializer(), training=True):
@@ -190,18 +174,9 @@ class DCGAN:
                                           feed_dict={gen_input: noise, real_input: batch})
                     self.losses.append((gen_loss, disc_loss))
 
-#                if (epoch+1) % 20 == 0:
-#                    sample_noise = np.random.uniform(low=-1, high=1, size=(72, self.gen_dims))
-#                    gen_samples = sess.run(self.__generator(gen_input, reuse=True, training=False), 
-#                                           feed_dict={gen_input: sample_noise})
-#                    self.samples.append(gen_samples)
-#                    img_dir = "/home/tianweiz/image/epoch-" + str(epoch) + ".png"
-#                    fig, axes = self.view_samples(-1, self.samples, 6, 12, figsize=(10,5))
-#                    fig.savefig(img_dir)
-
             if not os.path.exists(MODEL_DIR):
                 os.makedirs(MODEL_DIR)
-            saver.save(sess, MODEL_DIR + "model.ckpt-" + str(epoch))
+            saver.save(sess, MODEL_DIR + "model.ckpt-" + str(self.label_index) + "-" + str(epoch))
 
                     
                     
@@ -213,18 +188,6 @@ class DCGAN:
             yield batch * 2 - 1
 
 
-    def view_samples(self, epoch, samples, nrows, ncols, figsize=(5, 5)):
-
-        fig, axes = plt.subplots(figsize=figsize, nrows=nrows, ncols=ncols, sharey=True, sharex=True)
-
-        for ax, img in zip(axes.flatten(), samples[epoch]):
-            ax.axis('off')
-            img = ((img - img.min())*255 / (img.max() - img.min())).astype(np.uint8)
-            ax.set_adjustable('box-forced')
-            im = ax.imshow(img, aspect='equal')
-        plt.subplots_adjust(wspace=0, hspace=0)
-        return fig, axes
-
-
-gan = DCGAN(x_train)
-gan.train(batch_size=128, epochs=100)
+for i in range(10):
+    gan = DCGAN(label_index = i)
+    gan.train(batch_size=128, epochs=300)
