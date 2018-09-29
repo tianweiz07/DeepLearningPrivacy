@@ -8,7 +8,7 @@ import os
 import cv2
 from load_cifar import load_cifar
 
-MODEL_DIR = "./checkpoint/"
+MODEL_ROOT_DIR = "./checkpoint/"
 
 def Convert2Image(array, file_location):
     array = array.reshape(32, 32, 3)
@@ -26,7 +26,7 @@ class DCGAN:
         self.gen_dims = gen_dims
         self.weights = []
 
-        self.label_index = 0
+        self.label_index = label_index
         x_train, y_train, x_test, y_test = load_cifar(10)
         x_train = x_train.reshape((-1, 3, 32, 32)).transpose((0, 2, 3, 1))
         x_test = x_test.reshape((-1, 3, 32, 32)).transpose((0, 2, 3, 1))
@@ -165,7 +165,7 @@ class DCGAN:
             sess.run(tf.global_variables_initializer())
             saver = tf.train.Saver()
             for epoch in range(epochs):
-                print("Epoch " + str(epoch) + "/" + str(epochs) + "......")
+                print("Label " + str(self.label_index) +": Epoch " + str(epoch) + "/" + str(epochs) + "......")
                 for step, batch in enumerate(self.__next_batch(self.training_set, batch_size)):
                     noise = np.random.uniform(low=-1, high=1, size=(batch_size, self.gen_dims))
                     _ = sess.run(g_opt, feed_dict={gen_input: noise, real_input: batch})
@@ -174,9 +174,10 @@ class DCGAN:
                                           feed_dict={gen_input: noise, real_input: batch})
                     self.losses.append((gen_loss, disc_loss))
 
+            MODEL_DIR = MODEL_ROOT_DIR + "label-" + str(self.label_index) + "/"
             if not os.path.exists(MODEL_DIR):
                 os.makedirs(MODEL_DIR)
-            saver.save(sess, MODEL_DIR + "model.ckpt-" + str(self.label_index) + "-" + str(epoch))
+            saver.save(sess, MODEL_DIR + "model.ckpt-" + str(epoch))
 
                     
                     

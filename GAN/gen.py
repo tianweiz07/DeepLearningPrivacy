@@ -4,9 +4,7 @@ import os
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
-
-MODEL_DIR = "./checkpoint/"
+from PIL import Image
 
 def view_samples(samples, nrows, ncols, figsize=(5, 5)):
 
@@ -20,18 +18,47 @@ def view_samples(samples, nrows, ncols, figsize=(5, 5)):
         plt.subplots_adjust(wspace=0, hspace=0)
         return fig, axes
 
-g = tf.Graph()
 
-with tf.Session(graph = g) as sess:
-    ckpt = tf.train.get_checkpoint_state(MODEL_DIR)
-    g_saver = tf.train.import_meta_graph(ckpt.model_checkpoint_path + ".meta")
-    g_saver.restore(sess, ckpt.model_checkpoint_path)
+def Convert2Image(array, file_location):
+    array = array.reshape(32, 32, 3)
+    data = ((array - array.min())*255 / (array.max() - array.min())).astype(np.uint8)
+    img = Image.fromarray(data, 'RGB')
+    img.save(file_location)
 
-    x_ops = g.get_operation_by_name("gen_input")
-    y_ops = g.get_operation_by_name("generator/gen_output")
 
-    sample_noise = np.random.uniform(low=-1, high=1, size=(72, 100))
-    gen_samples = sess.run(y_ops.outputs[0], feed_dict={x_ops.outputs[0]: sample_noise})
-    img_dir = "/home/tianweiz/image/image.png"
-    fig, axes = view_samples(gen_samples, 6, 12, figsize=(10,5))
-    fig.savefig(img_dir)
+def generate_save_samples(model_dir, data_dir, num_samples, save_format = "raw"):
+
+    config = tf.ConfigProto(device_count = {'GPU': 0})
+
+    g = tf.Graph()
+    with tf.Session(graph = g, config=config) as sess:
+        ckpt = tf.train.get_checkpoint_state(model_dir)
+        g_saver = tf.train.import_meta_graph(ckpt.model_checkpoint_path + ".meta")
+        g_saver.restore(sess, ckpt.model_checkpoint_path)
+
+        x_ops = g.get_operation_by_name("gen_input")
+        y_ops = g.get_operation_by_name("generator/gen_output")
+
+        sample_noise = np.random.uniform(low=-1, high=1, size=(num_samples, 100))
+        gen_samples = sess.run(y_ops.outputs[0], feed_dict={x_ops.outputs[0]: sample_noise})
+
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+
+        if save_format == "image":
+            for i in range(num_samples):
+               Convert2Image(gen_samples[i], data_dir + "/" + str(i) + ".png")
+
+        elif save_format == "raw":
+            gen_samples = (gen_samples - gen_samples.min())/(gen_samples.max() - gen_samples.min())
+            gen_samples = gen_samples.transpose((0, 3, 1, 2)).reshape((-1, 3072))
+            np.save(data_dir + "/raw_data.npy", gen_samples)
+
+
+#        img_dir = "/home/tianweiz/image/image.png"
+#        fig, axes = view_samples(gen_samples, 6, 12, figsize=(10,5))
+#        fig.savefig(img_dir)
+
+model_dir = "/home/tianweiz/saved_models/checkpoint/"
+data_dir = "/home/tianweiz/DeepLearningPrivacy/GAN/data"
+generate_save_samples(model_dir, data_dir, 1000)
